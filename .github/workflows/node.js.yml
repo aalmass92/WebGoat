@@ -1,0 +1,58 @@
+# This workflow will do a clean installation of node dependencies, cache/restore them, build the source code and run tests across different versions of node
+# For 8) more information see: https://help.github.com/actions/language-and-framework-guides/using-nodejs-with-github-actions
+
+name: Node.js CI
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+jobs:
+  build:
+    env:
+      NODE_EXTRA_CA_CERTS: /trvapps/certs/TravelersRoot_CA2.cer
+    runs-on: [ self-hosted, Linux, x64, enterprise ]
+
+    strategy:
+      matrix:
+        node-version: [16]
+        # See supported Node.js release schedule at https://nodejs.org/en/about/releases/
+
+    steps:
+    - uses: actions/checkout@v3
+    - name: Use Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v1
+      with:
+        node-version: ${{ matrix.node-version }}
+        # cache: 'npm'
+    - run: npm install
+    - run: npm run build --if-present
+    # - run: npm test
+    - name: install java
+      uses: actions/setup-java@v1
+      with:
+        java-version: 1.8
+    - name: Synopsys Detect
+      id: blackduck
+      uses: synopsys-sig/synopsys-action@v1.0.0
+      env: 
+         BLACKDUCK_TRUST_CERT: TRUE
+         DETECT_PROJECT_TAGS: "bottomzone,contractors,internal,nexus,nonmodifiedoss,notdistributed"
+         detect_latest_release_version: 8.2.0
+         detect_project_version_name: "main"
+         detect_project_name: OI_Blackduck-actions-NPM_POC_comp
+         detect_project_application_id: '248981' 
+         LINUX_BRIDGE_URL: "https://sig-repo.synopsys.com/artifactory/bds-integrations-release/com/synopsys/integration/synopsys-action/0.1.72/ci-package-0.1.72-linux64.zip"
+         detect_diagnostic: true
+         #detect_accuracy_required: 'npm'
+      with:
+         blackduck_url: https://blackduck-dev.dvllb.travp.net
+         blackduck_apitoken: "${{secrets.BLACKDUCK_DEV_TOKEN}}"
+         blackduck_scan_full: true
+         blackduck_automation_fixpr: true
+         bridge_download_url: ${{ env.LINUX_BRIDGE_URL }}
+         github_token: ${{ secrets.TOKEN }}
+         blackduck_scan_failure_severities: "[\"NONE\"]"
+
